@@ -48,6 +48,21 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("rule-clash").addEventListener("change", syncSettings);
   document.getElementById("rule-exact-mean").addEventListener("change", syncSettings);
   document.getElementById("rule-duel").addEventListener("change", syncSettings);
+
+  // History toggle listener
+  let adminHistoryExpanded = false;
+  const adminHistoryToggleBtn = document.getElementById("admin-history-toggle-btn");
+  if (adminHistoryToggleBtn) {
+    adminHistoryToggleBtn.addEventListener("click", () => {
+      adminHistoryExpanded = !adminHistoryExpanded;
+      const content = document.getElementById("admin-history-content");
+      const chevron = document.getElementById("admin-history-chevron");
+      if (content && chevron) {
+        content.style.display = adminHistoryExpanded ? "block" : "none";
+        chevron.textContent = adminHistoryExpanded ? "▲ Hide" : "▼ Show";
+      }
+    });
+  }
 });
 
 async function verifyAndUnlock(pw, showErrorOnFail) {
@@ -198,7 +213,8 @@ function renderAdminUI(state) {
             <span class="player-lives-tag">${p.lives} ❤️</span>
             ${submitStatus}
           </div>
-          <div>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-secondary btn-sm" onclick="renamePlayer('${p.id}', '${escapeHtml(p.name)}')">Rename</button>
             <button class="btn btn-danger btn-sm" onclick="kickPlayer('${p.id}')">Kick</button>
           </div>
         </div>
@@ -208,7 +224,7 @@ function renderAdminUI(state) {
 
   // Render Results Card
   const resultCard = document.getElementById("admin-result-card");
-  if (state.phase === "ROUND_REVEALED" && state.last_result) {
+  if ((state.phase === "ROUND_REVEALED" || state.phase === "GAME_OVER") && state.last_result) {
     resultCard.style.display = "block";
     const res = state.last_result;
     document.getElementById("admin-calc-formula").textContent = res.formula_str;
@@ -216,11 +232,11 @@ function renderAdminUI(state) {
     document.getElementById("admin-calc-winners").textContent = res.winners.length > 0 ? res.winners.join(", ") : "None";
 
     const notesEl = document.getElementById("admin-round-notes");
-    if (res.notes && res.notes.length > 0) {
-      notesEl.innerHTML = res.notes.map(n => `<div class="note-item">${escapeHtml(n)}</div>`).join("");
-    } else {
-      notesEl.innerHTML = "";
+    const notesList = [...(res.notes || [])];
+    if (state.phase === "GAME_OVER") {
+      notesList.unshift(`🏆 GAME OVER! Champion: ${state.game_winner || 'None'}`);
     }
+    notesEl.innerHTML = notesList.map(n => `<div class="note-item ${n.includes('🏆') ? 'win' : ''}">${escapeHtml(n)}</div>`).join("");
 
     const tbody = document.getElementById("admin-summary-tbody");
     tbody.innerHTML = res.player_summaries.map(ps => `
@@ -231,7 +247,7 @@ function renderAdminUI(state) {
         <td style="padding:8px 6px;text-align:center;color:${ps.change === 0 ? '#10b981' : '#ef4444'};font-weight:700;">
           ${ps.change === 0 ? '-0 (Win)' : ps.change}
         </td>
-        <td style="padding:8px 6px;text-align:center;font-weight:700;">${ps.lives_after} ❤️</td>
+        <td style="padding:8px 6px;text-align:center;font-weight:700;">${ps.lives_after} ❤️ ${!ps.is_alive ? '💀' : ''}</td>
       </tr>
     `).join("");
   } else if (state.phase === "GAME_OVER") {
@@ -243,6 +259,62 @@ function renderAdminUI(state) {
   } else {
     resultCard.style.display = "none";
   }
+
+  // Render Admin Match History
+  renderAdminHistory(state.history || []);
+}
+
+function renderAdminHistory(history) {
+  const section = document.getElementById("admin-history-section");
+  const content = document.getElementById("admin-history-content");
+  const countEl = document.getElementById("admin-history-count");
+  if (!section || !content) return;
+
+  if (!history || history.length === 0) {
+    section.style.display = "none";
+    return;
+  }
+
+  section.style.display = "block";
+  if (countEl) countEl.textContent = history.length;
+
+  content.innerHTML = [...history].reverse().map(h => {
+    const winnersStr = h.winners && h.winners.length > 0 ? h.winners.join(", ") : "None";
+    const notesHtml = (h.notes || []).map(n => `<div style="font-size:0.8rem;color:#f59e0b;margin-top:2px;">• ${escapeHtml(n)}</div>`).join("");
+
+    const rows = (h.player_summaries || []).map(ps => `
+      <tr>
+        <td style="padding:4px 6px;">${escapeHtml(ps.name)}</td>
+        <td style="padding:4px 6px;text-align:center;">${ps.guess !== null ? ps.guess : '—'}</td>
+        <td style="padding:4px 6px;text-align:center;color:${ps.change === 0 ? '#10b981' : '#ef4444'};font-weight:600;">${ps.change === 0 ? '-0' : ps.change}</td>
+        <td style="padding:4px 6px;text-align:center;">${ps.lives_after} ❤️</td>
+      </tr>
+    `).join("");
+
+    return `
+      <div style="background:rgba(0,0,0,0.25);border:1px solid var(--bg-card-border);border-radius:var(--radius-md);padding:12px;margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <strong style="color:#fff;">Round ${h.round_number}</strong>
+          <span style="font-size:0.85rem;color:#10b981;font-weight:600;">Winner: ${escapeHtml(winnersStr)}</span>
+        </div>
+        <div style="font-family:monospace;font-size:0.85rem;color:#38bdf8;margin-bottom:6px;">
+          ${escapeHtml(h.formula_str)}<br>${escapeHtml(h.target_str)}
+        </div>
+        ${notesHtml}
+        <table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:0.82rem;">
+          <thead>
+            <tr style="border-bottom:1px solid var(--bg-card-border);color:var(--text-dim);text-align:left;">
+              <th style="padding:3px 6px;">Player</th>
+              <th style="padding:3px 6px;text-align:center;">Guess</th>
+              <th style="padding:3px 6px;text-align:center;">Change</th>
+              <th style="padding:3px 6px;text-align:center;">Lives</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  }).join("");
 }
 
 async function syncSettings() {
@@ -319,6 +391,29 @@ async function handleResetGame() {
   if (!confirm("Reset game back to Lobby? All player lives and rounds will be reset.")) return;
   try {
     await adminFetch("/api/admin/reset", { method: "POST" });
+    fetchAdminState();
+  } catch (err) {
+    // handled in adminFetch
+  }
+}
+
+async function renamePlayer(id, currentName) {
+  const newName = prompt(`Enter new name for "${currentName}":`, currentName);
+  if (newName === null) return;
+  const trimmed = newName.trim();
+  if (!trimmed) {
+    alert("Player name cannot be empty.");
+    return;
+  }
+  try {
+    const res = await adminFetch("/api/admin/rename_player", {
+      method: "POST",
+      body: JSON.stringify({ player_id: id, new_name: trimmed })
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      alert(data.detail || "Error renaming player.");
+    }
     fetchAdminState();
   } catch (err) {
     // handled in adminFetch

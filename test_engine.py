@@ -91,9 +91,64 @@ def test_elimination_and_game_over():
     print("[PASS] test_elimination_and_game_over passed!")
 
 
+def test_exact_target_hit():
+    engine = GameEngine()
+    engine.update_settings(starting_lives=10, rules={
+        "clash_penalty": True,
+        "exact_mean_penalty": True,
+        "duel_zero_hundred": True
+    })
+    p1 = engine.register_or_reconnect_player("p1", "Alice")
+    p2 = engine.register_or_reconnect_player("p2", "Bob")
+    p3 = engine.register_or_reconnect_player("p3", "Charlie")
+    engine.start_game()
+
+    # Alice: 16, Bob: 20, Charlie: 36
+    # Mean: (16 + 20 + 36)/3 = 72/3 = 24.0. Target: 2/3 * 24 = 16.0!
+    # Alice guessed 16, which is EXACT target (16)!
+    # Nobody guessed exact mean (24).
+    # Since exact_mean_penalty rule triggers on exact target OR exact mean:
+    # Alice wins, non-winners lose 2 lives!
+    engine.submit_guess("p1", 16)
+    engine.submit_guess("p2", 20)
+    engine.submit_guess("p3", 36)
+
+    res = engine.calculate_and_reveal_round()
+    assert res["winners"] == ["Alice"]
+    assert res["penalty_amount"] == 2
+    assert p1.lives == 10
+    assert p2.lives == 8  # 10 - 2
+    assert p3.lives == 8  # 10 - 2
+    print("[PASS] test_exact_target_hit passed!")
+
+
+def test_history_accumulation():
+    engine = GameEngine()
+    p1 = engine.register_or_reconnect_player("p1", "Alice")
+    p2 = engine.register_or_reconnect_player("p2", "Bob")
+    engine.start_game()
+    assert len(engine.history) == 0
+
+    engine.submit_guess("p1", 20)
+    engine.submit_guess("p2", 40)
+    engine.calculate_and_reveal_round()
+    assert len(engine.history) == 1
+    assert engine.history[0]["round_number"] == 1
+
+    engine.next_round()
+    engine.submit_guess("p1", 10)
+    engine.submit_guess("p2", 20)
+    engine.calculate_and_reveal_round()
+    assert len(engine.history) == 2
+    assert engine.history[1]["round_number"] == 2
+    print("[PASS] test_history_accumulation passed!")
+
+
 if __name__ == "__main__":
     test_standard_round()
     test_clash_rule()
     test_duel_rule()
     test_elimination_and_game_over()
+    test_exact_target_hit()
+    test_history_accumulation()
     print("All engine tests passed successfully!")

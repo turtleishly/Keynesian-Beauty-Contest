@@ -168,6 +168,15 @@
           <tbody id="admin-summary-tbody"></tbody>
         </table>
       </div>
+
+      <!-- Match History Section (Collapsible) -->
+      <div id="admin-history-section" class="card" style="display: none; margin-top: 20px;">
+        <div class="card-title" style="cursor: pointer; user-select: none; margin-bottom: 0;" id="admin-history-toggle-btn">
+          <span>📜 Match History (<span id="admin-history-count">0</span> rounds)</span>
+          <span id="admin-history-chevron" style="font-size: 0.85rem; color: var(--text-muted);">▼ Show</span>
+        </div>
+        <div id="admin-history-content" style="display: none; margin-top: 16px;"></div>
+      </div>
     </div>
 
     <footer>

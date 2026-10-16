@@ -27,8 +27,13 @@
       </div>
       <nav class="nav-links">
         <a href="/rules" class="nav-link">Rules</a>
+        <button id="btn-toggle-sound" class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 0.8rem;">🔊 Sound ON</button>
       </nav>
     </header>
+
+    <!-- Rule Change Notice Toast/Banner -->
+    <div id="rule-change-notice" class="note-item" style="display: none; background: rgba(99, 102, 241, 0.2); border-left-color: #6366f1; margin-bottom: 16px; font-weight: 600;">
+    </div>
 
     <!-- Initial Join Form (shown if player has no saved name) -->
     <div id="join-card" class="card" style="display: none;">
@@ -69,9 +74,19 @@
           Starting Lives: <strong id="lobby-starting-lives" style="color: #fff;">10</strong> | 
           Players Joined: <strong id="lobby-players-count" style="color: #fff;">0</strong>
         </p>
-        <p style="color: #38bdf8; font-size: 0.95rem; margin-bottom: 20px;">
+        <p style="color: #38bdf8; font-size: 0.95rem; margin-bottom: 16px;">
           ⏳ Waiting for the teacher/admin to start the game...
         </p>
+
+        <!-- Change Name in Lobby -->
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--bg-card-border); padding: 14px 16px; border-radius: var(--radius-md); margin-bottom: 20px;">
+          <label for="change-name-input" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; display: block;">Change Your Display Name:</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="change-name-input" maxlength="25" placeholder="Enter new name" style="flex: 1;">
+            <button id="btn-save-name" class="btn btn-secondary btn-sm" type="button">Update</button>
+          </div>
+          <div id="change-name-status" style="font-size: 0.8rem; margin-top: 6px; display: none;"></div>
+        </div>
 
         <h3 style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 10px;">Joined Players:</h3>
         <div id="lobby-players-list" class="player-list"></div>
@@ -83,6 +98,9 @@
           <span>Round <span id="active-round-num">1</span> Active</span>
           <span class="badge badge-active">Guessing Open</span>
         </div>
+
+        <!-- Active Rules Tags -->
+        <div id="active-rules-tags" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px;"></div>
 
         <div id="eliminated-msg" style="display: none; text-align: center; padding: 24px 0;">
           <div style="font-size: 3rem; margin-bottom: 12px;">💀</div>
@@ -157,8 +175,41 @@
         <p style="color: var(--text-muted); margin-bottom: 16px;">The ultimate champion is:</p>
         <div id="winner-name" style="font-size: 2rem; font-weight: 800; color: #10b981; margin-bottom: 24px;">Player</div>
 
+        <!-- Decisive Final Round Breakdown -->
+        <div id="gameover-final-round-box" style="margin-bottom: 24px; text-align: left; background: rgba(0,0,0,0.25); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--bg-card-border);">
+          <div class="card-title" style="font-size: 0.95rem; color: #38bdf8; margin-bottom: 8px;">
+            <span>Decisive Final Round (<span id="gameover-round-num">1</span>) Calculation:</span>
+          </div>
+          <div class="formula-box">
+<span id="gameover-calc-formula">(a + b) / 2 = 0.00</span>
+<span id="gameover-calc-target">2/3 × 0.00 = 0.00</span>
+          </div>
+          <div id="gameover-round-notes" style="margin-bottom: 10px;"></div>
+          <table style="width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.88rem;">
+            <thead>
+              <tr style="border-bottom: 1px solid var(--bg-card-border); color: var(--text-dim); text-align: left;">
+                <th style="padding: 4px;">Player</th>
+                <th style="padding: 4px; text-align: center;">Guess</th>
+                <th style="padding: 4px; text-align: center;">Diff</th>
+                <th style="padding: 4px; text-align: center;">Penalty</th>
+                <th style="padding: 4px; text-align: center;">Final Lives</th>
+              </tr>
+            </thead>
+            <tbody id="gameover-summary-tbody"></tbody>
+          </table>
+        </div>
+
         <h3 style="font-size: 1rem; color: var(--text-muted); margin-bottom: 12px; text-align: left;">Final Standings:</h3>
         <div id="final-roster" class="player-list"></div>
+      </div>
+
+      <!-- 5. Match History Section (Collapsible) -->
+      <div id="history-section" class="card" style="display: none; margin-top: 20px;">
+        <div class="card-title" style="cursor: pointer; user-select: none; margin-bottom: 0;" id="history-toggle-btn">
+          <span>📜 Match History (<span id="history-count">0</span> rounds)</span>
+          <span id="history-chevron" style="font-size: 0.85rem; color: var(--text-muted);">▼ Show</span>
+        </div>
+        <div id="history-content" style="display: none; margin-top: 16px;"></div>
       </div>
     </div>
 

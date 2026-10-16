@@ -1,6 +1,12 @@
 import uuid
+import math
 from typing import Dict, List, Optional, Any
 from collections import Counter
+
+
+def round_half_up(val: float) -> int:
+    """Standard mathematical rounding where 0.5 rounds up."""
+    return int(math.floor(val + 0.5))
 
 
 class Player:
@@ -32,12 +38,13 @@ class GameEngine:
         # Rule Toggles
         self.rules: Dict[str, bool] = {
             "clash_penalty": True,        # Duplicate guesses immediately lose (-1 life)
-            "exact_mean_penalty": True,   # Guessing rounded mean inflicts -2 lives to all other players
+            "exact_mean_penalty": True,   # Guessing rounded target or mean inflicts -2 lives to all other players
             "duel_zero_hundred": True,    # When 2 players left: if 0 and 100 chosen, 100 wins
         }
         
         self.players: Dict[str, Player] = {}
         self.last_result: Optional[Dict[str, Any]] = None
+        self.history: List[Dict[str, Any]] = []
         self.game_winner: Optional[str] = None
 
     def get_active_players(self) -> List[Player]:
@@ -76,6 +83,22 @@ class GameEngine:
             return True
         return False
 
+    def rename_player(self, player_id: str, new_name: str, is_admin: bool = False) -> str:
+        if player_id not in self.players:
+            raise ValueError("Player not found.")
+        
+        if not is_admin and self.phase != "LOBBY":
+            raise ValueError("Players can only change their name while in the lobby.")
+
+        cleaned = new_name.strip()
+        if not cleaned:
+            raise ValueError("Name cannot be empty.")
+        if len(cleaned) > 30:
+            raise ValueError("Name cannot exceed 30 characters.")
+
+        self.players[player_id].name = cleaned
+        return cleaned
+
     def update_settings(self, starting_lives: Optional[int] = None, 
                         target_ratio: Optional[float] = None, 
                         rules: Optional[Dict[str, bool]] = None):
@@ -99,6 +122,7 @@ class GameEngine:
         self.phase = "ROUND_ACTIVE"
         self.round_number = 1
         self.last_result = None
+        self.history = []
         self.game_winner = None
         
         # Reset player states
@@ -140,8 +164,13 @@ class GameEngine:
         n = len(submitted_players)
         total_sum = sum(guesses)
         mean = total_sum / n
-        rounded_mean = round(mean)
+        rounded_mean = round_half_up(mean)
         target = self.target_ratio * mean
+        rounded_target = round_half_up(target)
+
+        # Support both standard round-half-up and python round to ensure exact hits are never missed
+        valid_exact_targets = {round(target), round_half_up(target)}
+        valid_exact_means = {round(mean), round_half_up(mean)}
 
         notes: List[str] = []
         winners: List[Player] = []
@@ -170,13 +199,25 @@ class GameEngine:
                     clash_list_str = ", ".join(str(g) for g in sorted(clashed_guesses))
                     notes.append(f"Clash Rule: Duplicate guess(es) [{clash_list_str}] disqualified and lose 1 life.")
 
-            # --- Rule 2: Exact Rounded Mean Penalty (-2 to other players) ---
+            # --- Rule 2: Exact Target / Mean Penalty (-2 to other players) ---
+            # Triggers if any player guessed the exact rounded target OR exact rounded mean
             if self.rules.get("exact_mean_penalty"):
-                exact_hitters = [p for p in submitted_players if p.current_guess == rounded_mean]
-                if exact_hitters:
+                exact_target_hitters = [p for p in submitted_players if p.current_guess in valid_exact_targets]
+                exact_mean_hitters = [p for p in submitted_players if p.current_guess in valid_exact_means]
+
+                reasons = []
+                if exact_target_hitters:
+                    target_disp = f"{rounded_target}" if len(valid_exact_targets) == 1 else f"{target:.1f}"
+                    names = ", ".join(p.name for p in exact_target_hitters)
+                    reasons.append(f"Exact Target Hit ({target_disp}) by {names}")
+                if exact_mean_hitters:
+                    mean_disp = f"{rounded_mean}" if len(valid_exact_means) == 1 else f"{mean:.1f}"
+                    names = ", ".join(p.name for p in exact_mean_hitters)
+                    reasons.append(f"Exact Mean Hit ({mean_disp}) by {names}")
+
+                if reasons:
                     penalty_amount = 2
-                    hitters_str = ", ".join(p.name for p in exact_hitters)
-                    notes.append(f"Exact Mean Hit ({rounded_mean}) by {hitters_str}! Non-winners lose 2 lives.")
+                    notes.append(f"🎯 {' & '.join(reasons)}! Non-winners lose 2 lives.")
 
             # Eligible winners: submitted players who did not clash
             eligible = [p for p in submitted_players if p.current_guess not in clashed_guesses]
@@ -248,11 +289,15 @@ class GameEngine:
             "mean": round(mean, 2),
             "rounded_mean": rounded_mean,
             "target": round(target, 2),
+            "rounded_target": rounded_target,
             "winners": [w.name for w in winners],
             "notes": notes,
             "player_summaries": player_summaries,
-            "penalty_amount": penalty_amount
+            "penalty_amount": penalty_amount,
+            "phase_after_round": self.phase,
+            "game_winner": self.game_winner,
         }
+        self.history.append(dict(self.last_result))
         return self.last_result
 
     def next_round(self):
@@ -284,6 +329,7 @@ class GameEngine:
         self.phase = "LOBBY"
         self.round_number = 1
         self.last_result = None
+        self.history = []
         self.game_winner = None
         for p in self.players.values():
             p.lives = self.starting_lives
@@ -318,5 +364,6 @@ class GameEngine:
             "alive_players": len(self.get_active_players()),
             "submitted_count": len([p for p in self.get_active_players() if p.current_guess is not None]),
             "last_result": self.last_result,
+            "history": self.history,
             "game_winner": self.game_winner,
         }

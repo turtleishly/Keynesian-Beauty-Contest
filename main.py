@@ -77,6 +77,11 @@ class KickRequest(BaseModel):
     player_id: str
 
 
+class RenamePlayerRequest(BaseModel):
+    player_id: str
+    new_name: str = Field(..., min_length=1, max_length=30)
+
+
 class UpdateSettingsRequest(BaseModel):
     starting_lives: Optional[int] = None
     target_ratio: Optional[float] = None
@@ -142,12 +147,30 @@ async def player_submit(payload: SubmitGuessRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.post("/api/player/rename")
+async def player_rename(payload: RenamePlayerRequest):
+    try:
+        new_name = engine.rename_player(payload.player_id, payload.new_name, is_admin=False)
+        return {"success": True, "name": new_name}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 # --- Admin API Endpoints (Password Protected with 1234) ---
 @app.post("/api/admin/verify")
 async def admin_verify(payload: VerifyAdminRequest):
     if payload.password == ADMIN_PASSWORD:
         return {"success": True}
     raise HTTPException(status_code=401, detail="Invalid admin password.")
+
+
+@app.post("/api/admin/rename_player", dependencies=[Depends(verify_admin)])
+async def admin_rename_player(payload: RenamePlayerRequest):
+    try:
+        new_name = engine.rename_player(payload.player_id, payload.new_name, is_admin=True)
+        return {"success": True, "name": new_name}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/api/admin/start", dependencies=[Depends(verify_admin)])
