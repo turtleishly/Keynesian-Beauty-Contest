@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Keynesian Beauty Contest - Elimination</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <span class="brand-icon">⚖️</span>
+        <h1>Beauty Contest</h1>
+      </div>
+      <nav class="nav-links">
+        <a href="/rules" class="nav-link">Rules</a>
+        <a href="/admin" class="nav-link">Admin</a>
+      </nav>
+    </header>
+
+    <!-- Initial Join Form (shown if player has no saved name) -->
+    <div id="join-card" class="card" style="display: none;">
+      <h2 class="card-title">Join the Contest</h2>
+      <p style="color: var(--text-muted); margin-bottom: 20px;">
+        Enter your name or nickname to enter the room. No account or password required.
+      </p>
+      <form id="join-form">
+        <div class="form-group">
+          <label for="player-name-input">Your Name / Nickname</label>
+          <input type="text" id="player-name-input" placeholder="e.g. Alice" maxlength="25" required autofocus>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Enter Room</button>
+      </form>
+    </div>
+
+    <!-- Active Game Screen (shown when joined) -->
+    <div id="game-card" style="display: none;">
+      <!-- Player Status Bar -->
+      <div class="player-bar">
+        <div class="player-info">
+          <span class="player-name" id="display-player-name">Player</span>
+          <span class="player-status-text">Participant</span>
+        </div>
+        <div class="lives-display">
+          <span class="heart-icon">❤️</span>
+          <span id="display-player-lives">10</span>
+        </div>
+        <div>
+          <span id="player-status-badge" class="badge badge-lobby">Lobby</span>
+        </div>
+      </div>
+
+      <!-- 1. Lobby State -->
+      <div id="player-lobby-view" class="card" style="display: none;">
+        <h2 class="card-title">Waiting in Lobby</h2>
+        <p style="color: var(--text-muted); margin-bottom: 16px;">
+          Starting Lives: <strong id="lobby-starting-lives" style="color: #fff;">10</strong> | 
+          Players Joined: <strong id="lobby-players-count" style="color: #fff;">0</strong>
+        </p>
+        <p style="color: #38bdf8; font-size: 0.95rem; margin-bottom: 20px;">
+          ⏳ Waiting for the teacher/admin to start the game...
+        </p>
+
+        <h3 style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 10px;">Joined Players:</h3>
+        <div id="lobby-players-list" class="player-list"></div>
+      </div>
+
+      <!-- 2. Round Active State -->
+      <div id="player-active-view" class="card" style="display: none;">
+        <div class="card-title">
+          <span>Round <span id="active-round-num">1</span> Active</span>
+          <span class="badge badge-active">Guessing Open</span>
+        </div>
+
+        <div id="eliminated-msg" style="display: none; text-align: center; padding: 24px 0;">
+          <div style="font-size: 3rem; margin-bottom: 12px;">💀</div>
+          <h3 style="color: #ef4444; margin-bottom: 8px;">You Have Been Eliminated!</h3>
+          <p style="color: var(--text-muted);">
+            You have 0 lives remaining and are spectating the rest of the game.
+          </p>
+        </div>
+
+        <form id="guess-form">
+          <div class="guess-input-container">
+            <label for="guess-input" style="font-size: 1rem; color: var(--text-main); font-weight: 600;">
+              Enter your integer guess (0 - 100):
+            </label>
+            <input type="number" id="guess-input" class="big-number-input" min="0" max="100" step="1" placeholder="50" required>
+            
+            <div class="quick-steps">
+              <button type="button" class="btn btn-secondary btn-sm quick-adjust" data-delta="-10">-10</button>
+              <button type="button" class="btn btn-secondary btn-sm quick-adjust" data-delta="-1">-1</button>
+              <button type="button" class="btn btn-secondary btn-sm quick-adjust" data-delta="1">+1</button>
+              <button type="button" class="btn btn-secondary btn-sm quick-adjust" data-delta="10">+10</button>
+            </div>
+          </div>
+
+          <div id="submitted-notice" style="display: none; text-align: center; margin-bottom: 16px; color: #10b981; font-weight: 600;">
+            ✓ Your current guess: <span id="submitted-val" style="font-size: 1.2rem; color: #fff;">0</span> (You may update until round locks)
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">Lock In Guess</button>
+        </form>
+      </div>
+
+      <!-- 3. Round Revealed State -->
+      <div id="player-revealed-view" class="card" style="display: none;">
+        <div class="card-title">
+          <span>Round <span id="revealed-round-num">1</span> Results</span>
+          <span class="badge badge-revealed">Revealed</span>
+        </div>
+
+        <div class="formula-label">Calculation Breakdown:</div>
+        <div class="formula-box">
+<span id="calc-formula">(a + b + c) / 3 = 0.00</span>
+<span id="calc-target">2/3 × 0.00 = 0.00</span>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <strong style="color: var(--text-muted);">Round Winner(s):</strong> 
+          <span id="calc-winners" style="color: #10b981; font-weight: 700; font-size: 1.1rem;">Alice</span>
+        </div>
+
+        <div id="round-notes"></div>
+
+        <div class="formula-label" style="margin-top: 16px;">Round Scoreboard:</div>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.9rem;">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--bg-card-border); color: var(--text-dim); text-align: left;">
+              <th style="padding: 6px;">Player</th>
+              <th style="padding: 6px; text-align: center;">Guess</th>
+              <th style="padding: 6px; text-align: center;">Diff</th>
+              <th style="padding: 6px; text-align: center;">Penalty</th>
+              <th style="padding: 6px; text-align: center;">Lives</th>
+            </tr>
+          </thead>
+          <tbody id="round-summary-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- 4. Game Over State -->
+      <div id="player-gameover-view" class="card" style="display: none; text-align: center;">
+        <div style="font-size: 3.5rem; margin-bottom: 10px;">🏆</div>
+        <h2 style="font-size: 1.75rem; margin-bottom: 8px; color: #fff;">Game Concluded!</h2>
+        <p style="color: var(--text-muted); margin-bottom: 16px;">The ultimate champion is:</p>
+        <div id="winner-name" style="font-size: 2rem; font-weight: 800; color: #10b981; margin-bottom: 24px;">Player</div>
+
+        <h3 style="font-size: 1rem; color: var(--text-muted); margin-bottom: 12px; text-align: left;">Final Standings:</h3>
+        <div id="final-roster" class="player-list"></div>
+      </div>
+    </div>
+
+    <footer>
+      Keynesian Beauty Contest &bull; Classroom Game Session
+    </footer>
+  </div>
+
+  <script src="/static/js/player.js"></script>
+</body>
+</html>

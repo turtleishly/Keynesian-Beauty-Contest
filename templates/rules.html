@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game Rules - Keynesian Beauty Contest</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <span class="brand-icon">📜</span>
+        <h1>Contest Rules</h1>
+      </div>
+      <nav class="nav-links">
+        <a href="/" class="nav-link">Play</a>
+        <a href="/admin" class="nav-link">Admin</a>
+      </nav>
+    </header>
+
+    <div class="card">
+      <h2 class="card-title">What is a Keynesian Beauty Contest?</h2>
+      <p style="color: var(--text-muted); margin-bottom: 16px;">
+        In <em>The General Theory of Employment, Interest and Money</em> (1936), economist <strong>John Maynard Keynes</strong> described a newspaper competition where readers picked the six prettiest faces from a hundred photographs. The prize was awarded to whoever chose the faces that were most popular overall.
+      </p>
+      <blockquote style="border-left: 3px solid var(--accent-primary); padding-left: 14px; margin-bottom: 16px; font-style: italic; color: #cbd5e1;">
+        "It is not a case of choosing those faces that, to the best of one's judgment, are really the prettiest, nor even those that average opinion genuinely thinks the prettiest. We have reached the third degree where we devote our intelligences to anticipating what average opinion expects the average opinion to be."
+      </blockquote>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">How This Elimination Game Works</h2>
+      <ul style="padding-left: 20px; color: var(--text-muted); display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+        <li><strong style="color:#fff;">Integer Inputs:</strong> In each round, every player chooses an integer from <strong>0 to 100</strong>.</li>
+        <li><strong style="color:#fff;">The Target:</strong> All guesses are averaged ($\mu$), and multiplied by the target fraction (usually $\frac{2}{3}$):
+          $$\text{Target} = \frac{2}{3} \times \text{Average}$$
+        </li>
+        <li><strong style="color:#fff;">Winner(s):</strong> The player whose guess is closest to the Target wins the round. Ties are permitted; tied winners both win.</li>
+        <li><strong style="color:#fff;">Lives System:</strong> Every participant begins with <strong>10 lives</strong> (or as configured by the admin). Winners lose 0 lives. All non-winners lose <strong>1 life</strong>.</li>
+        <li><strong style="color:#fff;">Elimination:</strong> When a player reaches 0 lives, they are eliminated and spectate the remaining rounds. The last survivor wins!</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">Special Optional Rules</h2>
+      <p style="color: var(--text-muted); margin-bottom: 16px;">
+        The admin can activate or deactivate these special game theory rules between rounds:
+      </p>
+
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="background: rgba(255,255,255,0.03); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--bg-card-border);">
+          <strong style="color: #fbbf24;">1. Duplicate Clash Penalty</strong>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">
+            If two or more players submit the exact same number, their guesses clash! They are immediately disqualified from winning that round and each lose 1 life.
+          </p>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.03); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--bg-card-border);">
+          <strong style="color: #ef4444;">2. Exact Mean Penalty (-2 Lives)</strong>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">
+            If any player guesses <em>exactly</em> the rounded mean of all submitted numbers, the stakes double! All non-winning players lose <strong>2 lives</strong> instead of 1.
+          </p>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.03); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--bg-card-border);">
+          <strong style="color: #38bdf8;">3. Final Duel: 0 vs 100</strong>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">
+            When only 2 players remain alive, if one player selects <strong>0</strong> and the other selects <strong>100</strong>, the player who picked <strong>100</strong> wins the round!
+          </p>
+        </div>
+      </div>
+
+      <div style="margin-top: 24px; text-align: center;">
+        <a href="/" class="btn btn-primary">Back to Game</a>
+      </div>
+    </div>
+
+    <footer>
+      Keynesian Beauty Contest &bull; Classroom Game Rules
+    </footer>
+  </div>
+</body>
+</html>
