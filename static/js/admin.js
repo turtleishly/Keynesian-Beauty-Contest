@@ -1,13 +1,39 @@
-// Keynesian Beauty Contest - Admin Dashboard Logic (Polling Architecture)
+// Keynesian Beauty Contest - Admin Dashboard Logic with Password Protection
 
 const POLL_INTERVAL_MS = 1500;
 let pollTimer = null;
 let currentPhase = null;
+let adminPassword = sessionStorage.getItem("kbc_admin_pw") || "";
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Initial fetch and start polling
-  fetchAdminState();
-  pollTimer = setInterval(fetchAdminState, POLL_INTERVAL_MS);
+  const authCard = document.getElementById("admin-auth-card");
+  const dashboardView = document.getElementById("admin-dashboard-view");
+  const authForm = document.getElementById("admin-auth-form");
+  const passwordInput = document.getElementById("admin-password-input");
+  const authError = document.getElementById("admin-auth-error");
+  const logoutBtn = document.getElementById("btn-admin-logout");
+
+  // Check existing session
+  if (adminPassword) {
+    verifyAndUnlock(adminPassword, false);
+  } else {
+    showAuthGate();
+  }
+
+  // Handle password submission
+  authForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const entered = passwordInput.value.trim();
+    if (!entered) return;
+    await verifyAndUnlock(entered, true);
+  });
+
+  // Handle logout / lock
+  logoutBtn.addEventListener("click", () => {
+    sessionStorage.removeItem("kbc_admin_pw");
+    adminPassword = "";
+    showAuthGate();
+  });
 
   // Setup event listeners for admin controls
   document.getElementById("btn-start-game").addEventListener("click", handleStartGame);
@@ -24,7 +50,76 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("rule-duel").addEventListener("change", syncSettings);
 });
 
+async function verifyAndUnlock(pw, showErrorOnFail) {
+  const authCard = document.getElementById("admin-auth-card");
+  const dashboardView = document.getElementById("admin-dashboard-view");
+  const authError = document.getElementById("admin-auth-error");
+  const logoutBtn = document.getElementById("btn-admin-logout");
+
+  try {
+    const res = await fetch("/api/admin/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pw })
+    });
+
+    if (res.ok) {
+      adminPassword = pw;
+      sessionStorage.setItem("kbc_admin_pw", pw);
+      authCard.style.display = "none";
+      dashboardView.style.display = "block";
+      logoutBtn.style.display = "inline-flex";
+      authError.style.display = "none";
+
+      fetchAdminState();
+      if (!pollTimer) {
+        pollTimer = setInterval(fetchAdminState, POLL_INTERVAL_MS);
+      }
+    } else {
+      if (showErrorOnFail) {
+        authError.style.display = "block";
+      } else {
+        sessionStorage.removeItem("kbc_admin_pw");
+        showAuthGate();
+      }
+    }
+  } catch (err) {
+    console.error("Auth check failed:", err);
+    if (showErrorOnFail) authError.style.display = "block";
+  }
+}
+
+function showAuthGate() {
+  document.getElementById("admin-auth-card").style.display = "block";
+  document.getElementById("admin-dashboard-view").style.display = "none";
+  document.getElementById("btn-admin-logout").style.display = "none";
+  document.getElementById("admin-password-input").value = "";
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
+
+// Authenticated fetch wrapper
+async function adminFetch(url, options = {}) {
+  const headers = {
+    "Content-Type": "application/json",
+    "x-admin-key": adminPassword,
+    ...(options.headers || {})
+  };
+
+  const res = await fetch(url, { ...options, headers });
+  if (res.status === 401) {
+    alert("Admin session expired or password invalid.");
+    sessionStorage.removeItem("kbc_admin_pw");
+    showAuthGate();
+    throw new Error("Unauthorized");
+  }
+  return res;
+}
+
 async function fetchAdminState() {
+  if (!adminPassword) return;
   try {
     const res = await fetch("/api/game/state");
     if (!res.ok) return;
@@ -111,7 +206,7 @@ function renderAdminUI(state) {
     }).join("");
   }
 
-  // Render Last Result Box if available
+  // Render Results Card
   const resultCard = document.getElementById("admin-result-card");
   if (state.phase === "ROUND_REVEALED" && state.last_result) {
     resultCard.style.display = "block";
@@ -158,9 +253,8 @@ async function syncSettings() {
   const duelVal = document.getElementById("rule-duel").checked;
 
   try {
-    await fetch("/api/admin/update_settings", {
+    await adminFetch("/api/admin/update_settings", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         starting_lives: isNaN(livesVal) ? 10 : livesVal,
         target_ratio: isNaN(ratioVal) ? 0.6667 : ratioVal,
@@ -180,69 +274,68 @@ async function syncSettings() {
 async function handleStartGame() {
   if (!confirm("Start the game? No new players will be able to join once started.")) return;
   try {
-    const res = await fetch("/api/admin/start", { method: "POST" });
+    const res = await adminFetch("/api/admin/start", { method: "POST" });
     const data = await res.json();
     if (!res.ok) alert(data.detail || "Error starting game");
     fetchAdminState();
   } catch (err) {
-    alert("Connection error starting game.");
+    // handled in adminFetch if 401
   }
 }
 
 async function handleRevealRound() {
   try {
-    const res = await fetch("/api/admin/reveal", { method: "POST" });
+    const res = await adminFetch("/api/admin/reveal", { method: "POST" });
     const data = await res.json();
     if (!res.ok) alert(data.detail || "Error revealing round");
     fetchAdminState();
   } catch (err) {
-    alert("Connection error revealing round.");
+    // handled in adminFetch
   }
 }
 
 async function handleNextRound() {
   try {
-    const res = await fetch("/api/admin/next_round", { method: "POST" });
+    const res = await adminFetch("/api/admin/next_round", { method: "POST" });
     const data = await res.json();
     if (!res.ok) alert(data.detail || "Error starting next round");
     fetchAdminState();
   } catch (err) {
-    alert("Connection error starting next round.");
+    // handled in adminFetch
   }
 }
 
 async function handleEndGame() {
   if (!confirm("Are you sure you want to end the game early?")) return;
   try {
-    await fetch("/api/admin/end_game", { method: "POST" });
+    await adminFetch("/api/admin/end_game", { method: "POST" });
     fetchAdminState();
   } catch (err) {
-    alert("Connection error ending game.");
+    // handled in adminFetch
   }
 }
 
 async function handleResetGame() {
   if (!confirm("Reset game back to Lobby? All player lives and rounds will be reset.")) return;
   try {
-    await fetch("/api/admin/reset", { method: "POST" });
+    await adminFetch("/api/admin/reset", { method: "POST" });
     fetchAdminState();
   } catch (err) {
-    alert("Connection error resetting game.");
+    // handled in adminFetch
   }
 }
 
 async function kickPlayer(id) {
   if (!confirm("Kick this player?")) return;
   try {
-    const res = await fetch("/api/admin/kick", {
+    const res = await adminFetch("/api/admin/kick", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ player_id: id })
     });
     if (!res.ok) alert("Error kicking player.");
     fetchAdminState();
   } catch (err) {
-    alert("Connection error kicking player.");
+    // handled in adminFetch
   }
 }
 

@@ -1,6 +1,6 @@
 import os
-from typing import Optional, Dict, Any
-from fastapi import FastAPI, Request, HTTPException
+from typing import Optional, Dict, Any, List
+from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -10,21 +10,56 @@ from game_engine import GameEngine
 
 app = FastAPI(title="Keynesian Beauty Contest - Elimination Game")
 
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "1234")
+
 # Setup directories
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+MANGA_DIR = os.path.join(BASE_DIR, "manga")
 
 os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(os.path.join(STATIC_DIR, "css"), exist_ok=True)
 os.makedirs(os.path.join(STATIC_DIR, "js"), exist_ok=True)
 os.makedirs(TEMPLATES_DIR, exist_ok=True)
+os.makedirs(MANGA_DIR, exist_ok=True)
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.mount("/manga", StaticFiles(directory=MANGA_DIR), name="manga")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 # Single in-memory game instance
 engine = GameEngine()
+
+
+def get_ordered_manga_images() -> List[str]:
+    """Scans MANGA_DIR for image files and returns their URLs sorted in numerical order (0.png, 1.png, ...)."""
+    if not os.path.exists(MANGA_DIR):
+        return []
+    valid_exts = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+    files = [f for f in os.listdir(MANGA_DIR) if os.path.splitext(f)[1].lower() in valid_exts]
+
+    def sort_key(filename: str):
+        stem = os.path.splitext(filename)[0]
+        try:
+            return (0, int(stem))
+        except ValueError:
+            return (1, stem.lower())
+
+    files.sort(key=sort_key)
+    return [f"/manga/{f}" for f in files]
+
+
+def verify_admin(request: Request):
+    """Verifies that the request provides the correct admin password via header, cookie, or query param."""
+    key = (
+        request.headers.get("x-admin-key")
+        or request.cookies.get("admin_key")
+        or request.query_params.get("key")
+    )
+    if key != ADMIN_PASSWORD:
+        raise HTTPException(status_code=401, detail="Unauthorized: Invalid admin password.")
+    return True
 
 
 # --- Request Models ---
@@ -48,6 +83,10 @@ class UpdateSettingsRequest(BaseModel):
     rules: Optional[Dict[str, bool]] = None
 
 
+class VerifyAdminRequest(BaseModel):
+    password: str
+
+
 # --- Web Page Routes ---
 @app.get("/", response_class=HTMLResponse)
 async def home_page(request: Request):
@@ -57,6 +96,16 @@ async def home_page(request: Request):
 @app.get("/rules", response_class=HTMLResponse)
 async def rules_page(request: Request):
     return templates.TemplateResponse(request=request, name="rules.html")
+
+
+@app.get("/rules/manga", response_class=HTMLResponse)
+async def rules_manga_page(request: Request):
+    images = get_ordered_manga_images()
+    return templates.TemplateResponse(
+        request=request,
+        name="manga.html",
+        context={"images": images, "image_count": len(images)}
+    )
 
 
 @app.get("/admin", response_class=HTMLResponse)
@@ -93,7 +142,15 @@ async def player_submit(payload: SubmitGuessRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/api/admin/start")
+# --- Admin API Endpoints (Password Protected with 1234) ---
+@app.post("/api/admin/verify")
+async def admin_verify(payload: VerifyAdminRequest):
+    if payload.password == ADMIN_PASSWORD:
+        return {"success": True}
+    raise HTTPException(status_code=401, detail="Invalid admin password.")
+
+
+@app.post("/api/admin/start", dependencies=[Depends(verify_admin)])
 async def admin_start():
     try:
         engine.start_game()
@@ -102,7 +159,7 @@ async def admin_start():
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/api/admin/kick")
+@app.post("/api/admin/kick", dependencies=[Depends(verify_admin)])
 async def admin_kick(payload: KickRequest):
     success = engine.kick_player(payload.player_id)
     if not success:
@@ -110,7 +167,7 @@ async def admin_kick(payload: KickRequest):
     return {"success": True}
 
 
-@app.post("/api/admin/update_settings")
+@app.post("/api/admin/update_settings", dependencies=[Depends(verify_admin)])
 async def admin_update_settings(payload: UpdateSettingsRequest):
     engine.update_settings(
         starting_lives=payload.starting_lives,
@@ -120,7 +177,7 @@ async def admin_update_settings(payload: UpdateSettingsRequest):
     return {"success": True, "rules": engine.rules, "starting_lives": engine.starting_lives}
 
 
-@app.post("/api/admin/reveal")
+@app.post("/api/admin/reveal", dependencies=[Depends(verify_admin)])
 async def admin_reveal():
     try:
         result = engine.calculate_and_reveal_round()
@@ -129,7 +186,7 @@ async def admin_reveal():
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/api/admin/next_round")
+@app.post("/api/admin/next_round", dependencies=[Depends(verify_admin)])
 async def admin_next_round():
     try:
         engine.next_round()
@@ -138,13 +195,13 @@ async def admin_next_round():
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/api/admin/end_game")
+@app.post("/api/admin/end_game", dependencies=[Depends(verify_admin)])
 async def admin_end_game():
     engine.end_game()
     return {"success": True, "game_winner": engine.game_winner}
 
 
-@app.post("/api/admin/reset")
+@app.post("/api/admin/reset", dependencies=[Depends(verify_admin)])
 async def admin_reset():
     engine.reset_game()
     return {"success": True, "phase": engine.phase}

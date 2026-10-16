@@ -5,6 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard - Keynesian Beauty Contest</title>
   <link rel="stylesheet" href="/static/css/style.css">
+  
+  <!-- KaTeX Math Rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false}
+      ],
+      throwOnError: false
+    });"></script>
 </head>
 <body>
   <div class="container container-wide">
@@ -16,124 +28,146 @@
       <nav class="nav-links">
         <a href="/" class="nav-link">Player View</a>
         <a href="/rules" class="nav-link">Rules</a>
+        <button id="btn-admin-logout" class="btn btn-secondary btn-sm" style="display: none;">Lock 🔒</button>
       </nav>
     </header>
 
-    <!-- Top Status Bar -->
-    <div class="player-bar">
-      <div class="player-info">
-        <span class="player-name" id="admin-round-indicator">Round 1</span>
-        <span class="player-status-text" id="admin-alive-count">0 / 0 Alive</span>
-      </div>
-      <div>
-        <span id="admin-submission-progress" style="font-weight: 700; color: #38bdf8; margin-right: 12px;">0 / 0 Submitted</span>
-        <span id="admin-phase-badge" class="badge badge-lobby">LOBBY</span>
-      </div>
+    <!-- Admin Password Gate Card -->
+    <div id="admin-auth-card" class="card" style="max-width: 440px; margin: 40px auto; text-align: center;">
+      <div style="font-size: 2.5rem; margin-bottom: 12px;">🔒</div>
+      <h2 class="card-title" style="justify-content: center; margin-bottom: 8px;">Admin Access</h2>
+      <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem;">
+        Enter the password to access game management and controls.
+      </p>
+      <form id="admin-auth-form">
+        <div class="form-group">
+          <input type="password" id="admin-password-input" placeholder="Password" required autofocus style="text-align: center; font-size: 1.25rem; letter-spacing: 0.1em;">
+        </div>
+        <div id="admin-auth-error" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 14px; display: none;">
+          Incorrect password. Please try again.
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Unlock Dashboard</button>
+      </form>
     </div>
 
-    <!-- Main Admin Controls Grid -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
-      
-      <!-- Left Column: Settings & Rule Toggles -->
-      <div class="card">
-        <h2 class="card-title">Game Settings & Rules</h2>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
-          Starting lives can be configured before starting. Rules can be toggled anytime between rounds!
-        </p>
-
-        <div class="form-group">
-          <label for="admin-starting-lives">Starting Lives per Player:</label>
-          <input type="number" id="admin-starting-lives" min="1" max="50" value="10">
+    <!-- Main Admin Dashboard View (Revealed after password verified) -->
+    <div id="admin-dashboard-view" style="display: none;">
+      <!-- Top Status Bar -->
+      <div class="player-bar">
+        <div class="player-info">
+          <span class="player-name" id="admin-round-indicator">Round 1</span>
+          <span class="player-status-text" id="admin-alive-count">0 / 0 Alive</span>
         </div>
-
-        <div class="form-group">
-          <label for="admin-target-ratio">Target Multiplier ($p$):</label>
-          <select id="admin-target-ratio">
-            <option value="0.6666666666666666" selected>2/3 of Average (Standard ≈ 0.67)</option>
-            <option value="0.8">4/5 of Average (0.80)</option>
-            <option value="0.5">1/2 of Average (0.50)</option>
-            <option value="0.7">0.70 of Average</option>
-          </select>
-        </div>
-
-        <div class="formula-label" style="margin-top: 16px;">Optional Round Rules:</div>
-        <div class="rule-toggle-group">
-          <label class="rule-toggle-item">
-            <input type="checkbox" id="rule-clash" checked>
-            <div>
-              <strong>Duplicate Clash Penalty</strong>
-              <div class="rule-desc">If 2 or more players enter the exact same guess, they are disqualified from winning this round and lose 1 life.</div>
-            </div>
-          </label>
-
-          <label class="rule-toggle-item">
-            <input type="checkbox" id="rule-exact-mean" checked>
-            <div>
-              <strong>Exact Mean Penalty (-2 Lives)</strong>
-              <div class="rule-desc">If any player's guess equals the rounded mean, all non-winning players lose 2 lives instead of 1.</div>
-            </div>
-          </label>
-
-          <label class="rule-toggle-item">
-            <input type="checkbox" id="rule-duel" checked>
-            <div>
-              <strong>2-Player Duel Rule (0 vs 100)</strong>
-              <div class="rule-desc">When only 2 players remain, if their guesses are 0 and 100, the player who chose 100 wins!</div>
-            </div>
-          </label>
-        </div>
-
-        <!-- Master Action Buttons -->
-        <div class="admin-actions">
-          <button id="btn-start-game" class="btn btn-primary">Start Game (Lock Lobby)</button>
-          <button id="btn-reveal-round" class="btn btn-success" style="display:none;">Lock & Reveal Round</button>
-          <button id="btn-next-round" class="btn btn-primary" style="display:none;">Next Round ⏩</button>
-          <button id="btn-end-game" class="btn btn-danger" style="display:none;">End Game Early</button>
-          <button id="btn-reset-game" class="btn btn-secondary">Reset to Lobby</button>
+        <div>
+          <span id="admin-submission-progress" style="font-weight: 700; color: #38bdf8; margin-right: 12px;">0 / 0 Submitted</span>
+          <span id="admin-phase-badge" class="badge badge-lobby">LOBBY</span>
         </div>
       </div>
 
-      <!-- Right Column: Player Roster & Submission Monitor -->
-      <div class="card">
-        <h2 class="card-title">
-          <span>Connected Players</span>
-          <span style="font-size: 0.85rem; color: var(--text-dim); font-weight: normal;">(Admin can kick slots)</span>
-        </h2>
-        <div id="admin-player-roster" class="player-list"></div>
+      <!-- Main Admin Controls Grid -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+        
+        <!-- Left Column: Settings & Rule Toggles -->
+        <div class="card">
+          <h2 class="card-title">Game Settings & Rules</h2>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+            Starting lives can be configured before starting. Rules can be toggled anytime between rounds!
+          </p>
+
+          <div class="form-group">
+            <label for="admin-starting-lives">Starting Lives per Player:</label>
+            <input type="number" id="admin-starting-lives" min="1" max="50" value="10">
+          </div>
+
+          <div class="form-group">
+            <label for="admin-target-ratio">Target Multiplier ($p$):</label>
+            <select id="admin-target-ratio">
+              <option value="0.6666666666666666" selected>2/3 of Average (Standard ≈ 0.67)</option>
+              <option value="0.8">4/5 of Average (0.80)</option>
+              <option value="0.5">1/2 of Average (0.50)</option>
+              <option value="0.7">0.70 of Average</option>
+            </select>
+          </div>
+
+          <div class="formula-label" style="margin-top: 16px;">Optional Round Rules:</div>
+          <div class="rule-toggle-group">
+            <label class="rule-toggle-item">
+              <input type="checkbox" id="rule-clash" checked>
+              <div>
+                <strong>Duplicate Clash Penalty</strong>
+                <div class="rule-desc">If 2 or more players enter the exact same guess, they are disqualified from winning this round and lose 1 life.</div>
+              </div>
+            </label>
+
+            <label class="rule-toggle-item">
+              <input type="checkbox" id="rule-exact-mean" checked>
+              <div>
+                <strong>Exact Mean Penalty (-2 Lives)</strong>
+                <div class="rule-desc">If any player's guess equals the rounded mean, all non-winning players lose 2 lives instead of 1.</div>
+              </div>
+            </label>
+
+            <label class="rule-toggle-item">
+              <input type="checkbox" id="rule-duel" checked>
+              <div>
+                <strong>2-Player Duel Rule (0 vs 100)</strong>
+                <div class="rule-desc">When only 2 players remain, if their guesses are 0 and 100, the player who chose 100 wins!</div>
+              </div>
+            </label>
+          </div>
+
+          <!-- Master Action Buttons -->
+          <div class="admin-actions">
+            <button id="btn-start-game" class="btn btn-primary">Start Game (Lock Lobby)</button>
+            <button id="btn-reveal-round" class="btn btn-success" style="display:none;">Lock & Reveal Round</button>
+            <button id="btn-next-round" class="btn btn-primary" style="display:none;">Next Round ⏩</button>
+            <button id="btn-end-game" class="btn btn-danger" style="display:none;">End Game Early</button>
+            <button id="btn-reset-game" class="btn btn-secondary">Reset to Lobby</button>
+          </div>
+        </div>
+
+        <!-- Right Column: Player Roster & Submission Monitor -->
+        <div class="card">
+          <h2 class="card-title">
+            <span>Connected Players</span>
+            <span style="font-size: 0.85rem; color: var(--text-dim); font-weight: normal;">(Admin can kick slots)</span>
+          </h2>
+          <div id="admin-player-roster" class="player-list"></div>
+        </div>
+
       </div>
 
-    </div>
-
-    <!-- Results Display Panel (Shows after reveal) -->
-    <div id="admin-result-card" class="card" style="display: none; margin-top: 20px;">
-      <h2 class="card-title">Round Results & Calculation</h2>
-      
-      <div class="formula-label">Formula:</div>
-      <div class="formula-box">
+      <!-- Results Display Panel (Shows after reveal) -->
+      <div id="admin-result-card" class="card" style="display: none; margin-top: 20px;">
+        <h2 class="card-title">Round Results & Calculation</h2>
+        
+        <div class="formula-label">Formula:</div>
+        <div class="formula-box">
 <span id="admin-calc-formula">(a + b + c) / 3 = 0.00</span>
 <span id="admin-calc-target">2/3 × 0.00 = 0.00</span>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+          <strong style="color: var(--text-muted);">Winner(s):</strong>
+          <span id="admin-calc-winners" style="color: #10b981; font-weight: 700; font-size: 1.15rem;">Alice</span>
+        </div>
+
+        <div id="admin-round-notes"></div>
+
+        <div class="formula-label" style="margin-top: 16px;">Player Deductions:</div>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.9rem;">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--bg-card-border); color: var(--text-dim); text-align: left;">
+              <th style="padding: 6px;">Player</th>
+              <th style="padding: 6px; text-align: center;">Guess</th>
+              <th style="padding: 6px; text-align: center;">Diff</th>
+              <th style="padding: 6px; text-align: center;">Penalty</th>
+              <th style="padding: 6px; text-align: center;">Lives Remaining</th>
+            </tr>
+          </thead>
+          <tbody id="admin-summary-tbody"></tbody>
+        </table>
       </div>
-
-      <div style="margin-bottom: 12px;">
-        <strong style="color: var(--text-muted);">Winner(s):</strong>
-        <span id="admin-calc-winners" style="color: #10b981; font-weight: 700; font-size: 1.15rem;">Alice</span>
-      </div>
-
-      <div id="admin-round-notes"></div>
-
-      <div class="formula-label" style="margin-top: 16px;">Player Deductions:</div>
-      <table style="width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.9rem;">
-        <thead>
-          <tr style="border-bottom: 1px solid var(--bg-card-border); color: var(--text-dim); text-align: left;">
-            <th style="padding: 6px;">Player</th>
-            <th style="padding: 6px; text-align: center;">Guess</th>
-            <th style="padding: 6px; text-align: center;">Diff</th>
-            <th style="padding: 6px; text-align: center;">Penalty</th>
-            <th style="padding: 6px; text-align: center;">Lives Remaining</th>
-          </tr>
-        </thead>
-        <tbody id="admin-summary-tbody"></tbody>
-      </table>
     </div>
 
     <footer>

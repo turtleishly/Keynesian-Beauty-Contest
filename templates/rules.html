@@ -5,6 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Game Rules - Keynesian Beauty Contest</title>
   <link rel="stylesheet" href="/static/css/style.css">
+  
+  <!-- KaTeX Math Rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false}
+      ],
+      throwOnError: false
+    });"></script>
 </head>
 <body>
   <div class="container">
@@ -15,7 +27,7 @@
       </div>
       <nav class="nav-links">
         <a href="/" class="nav-link">Play</a>
-        <a href="/admin" class="nav-link">Admin</a>
+        <a href="/rules/manga" class="nav-link">Manga Rules 📖</a>
       </nav>
     </header>
 
@@ -71,8 +83,9 @@
         </div>
       </div>
 
-      <div style="margin-top: 24px; text-align: center;">
+      <div style="margin-top: 24px; text-align: center; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
         <a href="/" class="btn btn-primary">Back to Game</a>
+        <a href="/rules/manga" class="btn btn-secondary">Read Manga Version 📖</a>
       </div>
     </div>
 

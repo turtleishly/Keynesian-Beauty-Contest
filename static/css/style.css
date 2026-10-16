@@ -461,3 +461,16 @@ footer {
   padding: 20px 0;
   margin-top: auto;
 }
+
+/* KaTeX Dark Theme Adjustments */
+.katex-display {
+  margin: 16px 0 !important;
+  padding: 8px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.katex {
+  font-size: 1.15em;
+  color: #f1f5f9;
+}

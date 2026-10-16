@@ -18,7 +18,7 @@ def test_full_game_flow():
     assert "Admin Game Control" in r.text
 
     # 2. Reset game state
-    client.post("/api/admin/reset")
+    client.post("/api/admin/reset", headers={"x-admin-key": "1234"})
     
     # 3. Configure settings: 5 starting lives, clash=True, exact_mean=True, duel=True
     r = client.post("/api/admin/update_settings", json={
@@ -29,7 +29,7 @@ def test_full_game_flow():
             "exact_mean_penalty": True,
             "duel_zero_hundred": True
         }
-    })
+    }, headers={"x-admin-key": "1234"})
     assert r.status_code == 200
 
     # 4. Join 3 players: Alice, Bob, Charlie
@@ -47,7 +47,7 @@ def test_full_game_flow():
     assert state["starting_lives"] == 5
 
     # 6. Admin starts game
-    r = client.post("/api/admin/start")
+    r = client.post("/api/admin/start", headers={"x-admin-key": "1234"})
     assert r.status_code == 200
     state = client.get("/api/game/state").json()
     assert state["phase"] == "ROUND_ACTIVE"
@@ -68,7 +68,7 @@ def test_full_game_flow():
     assert bob_data["current_guess"] is None  # Hidden from Alice!
 
     # 8. Admin reveals
-    r = client.post("/api/admin/reveal")
+    r = client.post("/api/admin/reveal", headers={"x-admin-key": "1234"})
     assert r.status_code == 200
     res = r.json()["result"]
     assert res["winners"] == ["Alice"]
@@ -87,7 +87,7 @@ def test_full_game_flow():
     assert charlie["lives"] == 3  # 5 - 2
 
     # 9. Admin moves to next round
-    r = client.post("/api/admin/next_round")
+    r = client.post("/api/admin/next_round", headers={"x-admin-key": "1234"})
     assert r.status_code == 200
     state = client.get("/api/game/state").json()
     assert state["phase"] == "ROUND_ACTIVE"

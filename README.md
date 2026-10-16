@@ -26,7 +26,7 @@ A real-time, mobile-friendly web application for running an interactive game-the
 
 ## 🚀 Running Locally on Windows
 
-The virtual environment `.venv` has already been created for you.
+Create a .venv with the requirements from rewuirements.txt
 
 ### Option 1: Double Click
 Simply double-click [`run.bat`](file:///c:/Users/Aiden/Coding/python_ws/Keynesian%20Beauty%20Contest/run.bat).
@@ -37,8 +37,9 @@ Simply double-click [`run.bat`](file:///c:/Users/Aiden/Coding/python_ws/Keynesia
 ```
 Then visit:
 - **Player Screen:** `http://localhost:8000`
-- **Admin Dashboard:** `http://localhost:8000/admin`
 - **Rules Page:** `http://localhost:8000/rules`
+- **Manga Rules Reader:** `http://localhost:8000/rules/manga` (Drop images into the `manga/` folder named `0.png`, `1.png`, etc.)
+- **Admin Dashboard:** `http://localhost:8000/admin` (Unlinked; Protected with password: `1234`)
 
 ---
 
