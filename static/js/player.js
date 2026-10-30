@@ -315,8 +315,17 @@ function renderPlayerUI(state) {
   }
 
   const statusBadge = document.getElementById("player-status-badge");
-  statusBadge.className = `badge badge-${state.phase.toLowerCase()}`;
-  statusBadge.textContent = state.phase.replace("_", " ");
+  const playerStatusText = document.querySelector(".player-status-text");
+
+  if (!currentMe.is_alive) {
+    if (playerStatusText) playerStatusText.textContent = "Spectator (0 Lives) 👻";
+    statusBadge.className = "badge badge-spectator";
+    statusBadge.textContent = state.phase === "GAME_OVER" ? "GAME OVER" : "SPECTATING 👻";
+  } else {
+    if (playerStatusText) playerStatusText.textContent = "Participant";
+    statusBadge.className = `badge badge-${state.phase.toLowerCase()}`;
+    statusBadge.textContent = state.phase.replace("_", " ");
+  }
 
   // Containers
   const lobbyView = document.getElementById("player-lobby-view");
@@ -348,25 +357,43 @@ function renderPlayerUI(state) {
     activeView.style.display = "block";
     document.getElementById("active-round-num").textContent = state.round_number;
 
+    const activeRoundBadge = document.getElementById("active-round-badge");
+    if (activeRoundBadge) {
+      if (!currentMe.is_alive) {
+        activeRoundBadge.className = "badge badge-spectator";
+        activeRoundBadge.textContent = "Spectating Live 👻";
+      } else {
+        activeRoundBadge.className = "badge badge-active";
+        activeRoundBadge.textContent = "Guessing Open";
+      }
+    }
+
     // Render active rules badges
     renderActiveRulesTags(state.rules);
 
     const guessForm = document.getElementById("guess-form");
-    const eliminatedMsg = document.getElementById("eliminated-msg");
+    const spectatorView = document.getElementById("spectator-view");
     const submittedNotice = document.getElementById("submitted-notice");
     const guessInput = document.getElementById("guess-input");
 
     if (!currentMe.is_alive) {
       guessForm.style.display = "none";
-      eliminatedMsg.style.display = "block";
+      if (spectatorView) {
+        spectatorView.style.display = "block";
+        renderSpectatorView(state);
+      }
       submittedNotice.style.display = "none";
     } else {
       guessForm.style.display = "block";
-      eliminatedMsg.style.display = "none";
+      if (spectatorView) spectatorView.style.display = "none";
 
       if (currentMe.has_submitted && currentMe.current_guess !== null) {
         submittedNotice.style.display = "block";
         document.getElementById("submitted-val").textContent = currentMe.current_guess;
+        const waitingStatus = document.getElementById("active-waiting-status");
+        if (waitingStatus) {
+          waitingStatus.textContent = `Waiting for others... (${state.submitted_count} of ${state.alive_players} players ready)`;
+        }
         if (guessInput.value === "") {
           guessInput.value = currentMe.current_guess;
         }
@@ -378,6 +405,11 @@ function renderPlayerUI(state) {
   } else if (state.phase === "ROUND_REVEALED") {
     revealedView.style.display = "block";
     document.getElementById("revealed-round-num").textContent = state.round_number;
+
+    const spectatorRevealedBanner = document.getElementById("spectator-revealed-banner");
+    if (spectatorRevealedBanner) {
+      spectatorRevealedBanner.style.display = !currentMe.is_alive ? "block" : "none";
+    }
 
     if (state.last_result) {
       renderResultCard(state.last_result);
@@ -468,6 +500,79 @@ function renderResultCard(res) {
       </tr>
     `;
   }).join("");
+}
+
+function renderSpectatorView(state) {
+  // Progress counter & bar
+  const progressText = document.getElementById("spectator-progress-text");
+  const progressBar = document.getElementById("spectator-progress-bar");
+  const aliveCount = state.alive_players || 0;
+  const submittedCount = state.submitted_count || 0;
+  const pct = aliveCount > 0 ? Math.round((submittedCount / aliveCount) * 100) : 0;
+
+  if (progressText) {
+    progressText.textContent = `${submittedCount} / ${aliveCount} Submitted (${pct}%)`;
+  }
+  if (progressBar) {
+    progressBar.style.width = `${pct}%`;
+  }
+
+  // Live Roster of remaining active players
+  const liveRoster = document.getElementById("spectator-live-roster");
+  if (liveRoster) {
+    const alivePlayers = (state.players || []).filter(p => p.is_alive);
+    const deadPlayers = (state.players || []).filter(p => !p.is_alive);
+
+    let html = "";
+    if (alivePlayers.length === 0) {
+      html += `<div style="color:var(--text-dim);font-size:0.85rem;padding:6px 0;">No active players remaining.</div>`;
+    } else {
+      html += alivePlayers.map(p => {
+        const statusHtml = p.has_submitted
+          ? `<span style="color:#10b981;font-weight:600;font-size:0.85rem;">✓ Ready</span>`
+          : `<span style="color:#f59e0b;font-size:0.85rem;">⏳ Deciding...</span>`;
+
+        return `
+          <div class="player-item">
+            <div class="player-meta">
+              <strong>${escapeHtml(p.name)}</strong>
+              <span class="player-lives-tag">${p.lives} ❤️</span>
+            </div>
+            <div>${statusHtml}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    if (deadPlayers.length > 0) {
+      html += `
+        <div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--bg-card-border);font-size:0.8rem;color:var(--text-dim);">
+          <strong>Spectators:</strong> ${deadPlayers.map(p => `${escapeHtml(p.name)}${p.id === playerId ? ' (You)' : ''}`).join(", ")}
+        </div>
+      `;
+    }
+
+    liveRoster.innerHTML = html;
+  }
+
+  // Previous round recap
+  const recapBox = document.getElementById("spectator-previous-recap");
+  const recapFormula = document.getElementById("spectator-recap-formula");
+  const recapWinners = document.getElementById("spectator-recap-winners");
+  if (recapBox && state.last_result) {
+    recapBox.style.display = "block";
+    if (recapFormula) {
+      recapFormula.textContent = `${state.last_result.formula_str} | Target: ${state.last_result.target}`;
+    }
+    if (recapWinners) {
+      const w = state.last_result.winners && state.last_result.winners.length > 0
+        ? state.last_result.winners.join(", ")
+        : "None (All clashed / disqualified)";
+      recapWinners.textContent = `Round ${state.last_result.round_number} Winner: ${w}`;
+    }
+  } else if (recapBox) {
+    recapBox.style.display = "none";
+  }
 }
 
 function renderActiveRulesTags(rules) {

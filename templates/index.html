@@ -96,18 +96,41 @@
       <div id="player-active-view" class="card" style="display: none;">
         <div class="card-title">
           <span>Round <span id="active-round-num">1</span> Active</span>
-          <span class="badge badge-active">Guessing Open</span>
+          <span id="active-round-badge" class="badge badge-active">Guessing Open</span>
         </div>
 
         <!-- Active Rules Tags -->
         <div id="active-rules-tags" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px;"></div>
 
-        <div id="eliminated-msg" style="display: none; text-align: center; padding: 24px 0;">
-          <div style="font-size: 3rem; margin-bottom: 12px;">💀</div>
-          <h3 style="color: #ef4444; margin-bottom: 8px;">You Have Been Eliminated!</h3>
-          <p style="color: var(--text-muted);">
-            You have 0 lives remaining and are spectating the rest of the game.
-          </p>
+        <!-- Spectator View (Shown when eliminated) -->
+        <div id="spectator-view" style="display: none;">
+          <div style="background: rgba(168, 85, 247, 0.12); border: 1px solid rgba(168, 85, 247, 0.35); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 14px;">
+            <div style="font-size: 2.2rem;">👻</div>
+            <div>
+              <strong style="color: #d8b4fe; font-size: 1rem; display: block;">You are in Spectator Mode</strong>
+              <span style="color: var(--text-muted); font-size: 0.85rem;">You ran out of lives (0 ❤️), but you can follow the action live as remaining players make their moves.</span>
+            </div>
+          </div>
+
+          <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--bg-card-border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 0.9rem; color: var(--text-muted);">Active Submissions:</span>
+              <span id="spectator-progress-text" style="font-weight: 700; color: #38bdf8;">0 / 0 Submitted</span>
+            </div>
+            <div style="background: rgba(0,0,0,0.4); border-radius: 999px; height: 8px; overflow: hidden; margin-bottom: 16px;">
+              <div id="spectator-progress-bar" style="background: linear-gradient(90deg, #6366f1, #38bdf8); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+            </div>
+
+            <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 8px;">Remaining Contestants:</div>
+            <div id="spectator-live-roster" class="player-list"></div>
+          </div>
+
+          <!-- Previous Round Quick Recap if available -->
+          <div id="spectator-previous-recap" style="display: none; background: rgba(0,0,0,0.25); border: 1px solid var(--bg-card-border); border-radius: var(--radius-md); padding: 14px;">
+            <div style="font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Last Round Recap:</div>
+            <div id="spectator-recap-formula" style="font-family: monospace; font-size: 0.85rem; color: #38bdf8; margin-bottom: 4px;"></div>
+            <div id="spectator-recap-winners" style="font-size: 0.88rem; color: #10b981; font-weight: 600;"></div>
+          </div>
         </div>
 
         <form id="guess-form">
@@ -126,7 +149,8 @@
           </div>
 
           <div id="submitted-notice" style="display: none; text-align: center; margin-bottom: 16px; color: #10b981; font-weight: 600;">
-            ✓ Your current guess: <span id="submitted-val" style="font-size: 1.2rem; color: #fff;">0</span> (You may update until round locks)
+            <div>✓ Your current guess: <span id="submitted-val" style="font-size: 1.2rem; color: #fff;">0</span> (You may update until round locks)</div>
+            <div id="active-waiting-status" style="font-size: 0.85rem; color: #38bdf8; margin-top: 6px;">Waiting for other players...</div>
           </div>
 
           <button type="submit" class="btn btn-primary btn-block">Lock In Guess</button>
@@ -138,6 +162,10 @@
         <div class="card-title">
           <span>Round <span id="revealed-round-num">1</span> Results</span>
           <span class="badge badge-revealed">Revealed</span>
+        </div>
+
+        <div id="spectator-revealed-banner" style="display: none; background: rgba(168, 85, 247, 0.12); border: 1px solid rgba(168, 85, 247, 0.35); border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 14px; font-size: 0.9rem; color: #d8b4fe;">
+          👻 <strong>Spectator Mode:</strong> Round results have been calculated!
         </div>
 
         <div class="formula-label">Calculation Breakdown:</div>

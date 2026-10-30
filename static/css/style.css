@@ -164,6 +164,12 @@ header {
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
+.badge-spectator {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+}
+
 /* Player Profile Header Box */
 .player-bar {
   display: flex;

@@ -3,6 +3,7 @@
 const POLL_INTERVAL_MS = 1500;
 let pollTimer = null;
 let currentPhase = null;
+let latestAdminState = null;
 let adminPassword = sessionStorage.getItem("kbc_admin_pw") || "";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -147,6 +148,7 @@ async function fetchAdminState() {
 
 function renderAdminUI(state) {
   currentPhase = state.phase;
+  latestAdminState = state;
 
   // Header status
   const badge = document.getElementById("admin-phase-badge");
@@ -184,6 +186,7 @@ function renderAdminUI(state) {
 
   btnReveal.style.display = state.phase === "ROUND_ACTIVE" ? "inline-flex" : "none";
   btnReveal.disabled = state.submitted_count === 0;
+  btnReveal.textContent = `Lock & Reveal Round (${state.submitted_count}/${state.alive_players})`;
 
   btnNext.style.display = state.phase === "ROUND_REVEALED" ? "inline-flex" : "none";
   btnEnd.style.display = (state.phase === "ROUND_ACTIVE" || state.phase === "ROUND_REVEALED") ? "inline-flex" : "none";
@@ -356,6 +359,25 @@ async function handleStartGame() {
 }
 
 async function handleRevealRound() {
+  const roundNum = latestAdminState ? latestAdminState.round_number : 1;
+  const submitted = latestAdminState ? latestAdminState.submitted_count : 0;
+  const alive = latestAdminState ? latestAdminState.alive_players : 0;
+
+  let confirmMsg = "";
+  if (submitted < alive) {
+    const pending = alive - submitted;
+    confirmMsg = `⚠️ WARNING: Not all players have finished!\n\n` +
+      `Only ${submitted} of ${alive} active players have submitted their guess.\n` +
+      `(${pending} player${pending > 1 ? "s are" : " is"} still thinking!)\n\n` +
+      `Locking now will calculate the round without their input.\n\n` +
+      `Are you sure you want to lock and reveal Round ${roundNum}?`;
+  } else {
+    confirmMsg = `All ${alive} active player${alive > 1 ? "s have" : " has"} submitted their guesses.\n\n` +
+      `Lock submissions and calculate Round ${roundNum} results?`;
+  }
+
+  if (!confirm(confirmMsg)) return;
+
   try {
     const res = await adminFetch("/api/admin/reveal", { method: "POST" });
     const data = await res.json();
